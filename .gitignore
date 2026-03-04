@@ -2,6 +2,16 @@
 .goopspec/
 
 # ===========================
+# Project-specific ignores
+# ===========================
+docs/
+brand/
+mockups/
+QUICKSTART.md
+PROJECT_STATUS.md
+CREATION_SUMMARY.md
+
+# ===========================
 # Flutter / Dart
 # ===========================
 # Build outputs
