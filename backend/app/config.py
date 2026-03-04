@@ -4,7 +4,9 @@ Kinfolk API Configuration.
 Uses environment variables with sensible defaults for local development.
 """
 
-from pydantic_settings import BaseSettings
+from typing import Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -36,10 +38,27 @@ class Settings(BaseSettings):
     # Weather API (optional)
     openweather_api_key: str = ""
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-    }
+    # Voice / wake word
+    wake_word_sensitivity: float = 0.5
+    wake_word_engine: str = "openwakeword"
+    audio_sample_rate: int = 16000
+    audio_channels: int = 1
+
+    # Speech-to-text (STT)
+    stt_mode: str = "local"
+    openai_api_key: Optional[str] = None
+    vosk_model_path: str = "./models/vosk-model-en-us"
+
+    # Text-to-Speech (TTS)
+    tts_engine: str = "nanotts"  # "nanotts" (offline) or "gtts" (network)
+    tts_speed: float = 1.0
+    tts_volume: float = 0.8
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

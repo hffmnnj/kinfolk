@@ -13,3 +13,9 @@ flake8>=7.0.0
 # NOTE: pysqlcipher3 is preferred but often needs system SQLCipher headers.
 # Using sqlcipher3 wheel as first practical fallback.
 sqlcipher3>=0.6.0
+# NOTE: sounddevice requires system package: portaudio19-dev
+openwakeword>=0.6.0
+sounddevice>=0.4.6
+openai>=1.0.0
+vosk>=0.3.45
+gtts>=2.3.0
