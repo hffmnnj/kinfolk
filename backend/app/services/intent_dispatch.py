@@ -15,6 +15,10 @@ def setup_handlers(
     dispatch: "IntentDispatch",
     *,
     calendar_sync=None,
+    db_factory=None,
+    weather_service=None,
+    music_service=None,
+    ha_service=None,
 ) -> None:
     """Register real intent handlers, replacing built-in stubs.
 
@@ -33,6 +37,50 @@ def setup_handlers(
         dispatch.register_handler(
             IntentCategory.CALENDAR,
             calendar_handler.handle,
+        )
+
+    if db_factory is not None:
+        from app.services.intent_handlers.task_handler import (
+            TaskIntentHandler,
+        )
+
+        task_handler = TaskIntentHandler(db_factory=db_factory)
+        dispatch.register_handler(
+            IntentCategory.TASKS,
+            task_handler.handle,
+        )
+
+    if weather_service is not None:
+        from app.services.intent_handlers.weather_handler import (
+            WeatherIntentHandler,
+        )
+
+        weather_handler = WeatherIntentHandler(
+            weather_service=weather_service,
+        )
+        dispatch.register_handler(
+            IntentCategory.WEATHER,
+            weather_handler.handle,
+        )
+
+    if music_service is not None:
+        from app.services.intent_handlers.music_handler import MusicIntentHandler
+
+        music_handler = MusicIntentHandler(music_service=music_service)
+        dispatch.register_handler(
+            IntentCategory.MUSIC,
+            music_handler.handle,
+        )
+
+    if ha_service is not None:
+        from app.services.intent_handlers.smarthome_handler import (
+            SmartHomeIntentHandler,
+        )
+
+        smarthome_handler = SmartHomeIntentHandler(ha_service=ha_service)
+        dispatch.register_handler(
+            IntentCategory.SMARTHOME,
+            smarthome_handler.handle,
         )
 
 

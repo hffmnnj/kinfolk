@@ -15,9 +15,15 @@ router = APIRouter()
 
 
 @router.get("/", response_model=APIResponse)
-async def list_tasks(db: Session = Depends(get_db)):
-    """List all tasks."""
-    tasks = db.query(Task).all()
+async def list_tasks(
+    list_name: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """List tasks, optionally filtered by list name."""
+    query = db.query(Task)
+    if list_name is not None:
+        query = query.filter(Task.list_id == list_name)
+    tasks = query.all()
     return APIResponse(
         data=[TaskResponse.model_validate(t) for t in tasks],
         timestamp=datetime.now(timezone.utc),

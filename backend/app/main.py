@@ -12,16 +12,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.models import Event, Task, User, VoiceHistory  # noqa: F401
-from app.routers import auth, calendar, smarthome, tasks, users, voice
+from app.routers import (
+    auth,
+    calendar,
+    music,
+    smarthome,
+    tasks,
+    users,
+    voice,
+    weather,
+)
 from app.services.calendar_caldav import CalDAVCalendarService
 from app.services.calendar_google import GoogleCalendarService
 from app.services.calendar_sync import CalendarSyncService
+from app.services.home_assistant import HomeAssistantService
 from app.services.intent_dispatch import IntentDispatch, setup_handlers
+from app.services.music import MopidyMusicService
 from app.services.nlu import NLUService
 from app.services.stt import STTService
 from app.services.tts import TTSService
 from app.services.voice_pipeline import VoicePipeline
 from app.services.wake_word import WakeWordService
+from app.services.weather import WeatherService
 
 
 @asynccontextmanager
@@ -48,6 +60,10 @@ async def lifespan(app: FastAPI):
         tts_service=tts_service,
     )
 
+    # Weather service
+    weather_service = WeatherService()
+    app.state.weather_service = weather_service
+
     # Calendar sync — wire up available sources
     google_service = GoogleCalendarService(settings=settings)
     caldav_service = CalDAVCalendarService(app_settings=settings)
@@ -57,11 +73,17 @@ async def lifespan(app: FastAPI):
         db_factory=SessionLocal,
         settings=settings,
     )
+    music_service = MopidyMusicService(mopidy_url=settings.mopidy_url)
+    ha_service = HomeAssistantService(settings_obj=settings)
 
     # Wire real intent handlers now that backing services exist
     setup_handlers(
         intent_dispatch_service,
         calendar_sync=calendar_sync,
+        db_factory=SessionLocal,
+        weather_service=weather_service,
+        music_service=music_service,
+        ha_service=ha_service,
     )
 
     app.state.wake_word_service = wake_word_service
@@ -71,6 +93,8 @@ async def lifespan(app: FastAPI):
     app.state.intent_dispatch_service = intent_dispatch_service
     app.state.voice_pipeline = voice_pipeline
     app.state.calendar_sync = calendar_sync
+    app.state.music_service = music_service
+    app.state.ha_service = ha_service
 
     await wake_word_service.start()
     await calendar_sync.start()
@@ -113,3 +137,5 @@ app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["calendar"]
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(voice.router, prefix="/api/v1/voice", tags=["voice"])
 app.include_router(smarthome.router, prefix="/api/v1/smarthome", tags=["smarthome"])
+app.include_router(weather.router, prefix="/api/v1/weather", tags=["weather"])
+app.include_router(music.router, prefix="/api/v1/music", tags=["music"])
