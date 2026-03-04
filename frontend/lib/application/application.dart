@@ -1,2 +1,4 @@
 // Application layer barrel export
-// Add exports here as providers and services are created
+export 'providers/music_provider.dart';
+export 'providers/voice_state_provider.dart';
+export 'providers/weather_provider.dart';

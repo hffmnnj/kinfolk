@@ -1,2 +1,4 @@
 // Infrastructure layer barrel export
-// Add exports here as API clients and database are created
+export 'api/music_api_client.dart';
+export 'api/voice_api_client.dart';
+export 'api/weather_api_client.dart';

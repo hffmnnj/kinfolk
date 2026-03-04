@@ -1,5 +1,25 @@
 """Routers package."""
 
-from app.routers import calendar, smarthome, tasks, users, voice
+from app.routers import (
+    auth,
+    calendar,
+    music,
+    smarthome,
+    tasks,
+    timers,
+    users,
+    voice,
+    weather,
+)
 
-__all__ = ["users", "calendar", "tasks", "voice", "smarthome"]
+__all__ = [
+    "users",
+    "auth",
+    "calendar",
+    "tasks",
+    "timers",
+    "voice",
+    "smarthome",
+    "weather",
+    "music",
+]

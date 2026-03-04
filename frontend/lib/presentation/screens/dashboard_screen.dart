@@ -1,42 +1,89 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/weather.dart';
-import '../widgets/clock_widget.dart';
-import '../widgets/weather_widget.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/providers/music_provider.dart';
+import '../../application/providers/voice_state_provider.dart';
+import '../../domain/entities/voice_event.dart';
+import '../screens/music_screen.dart';
+import '../screens/photo_frame_screen.dart';
+import '../screens/voice_overlay_screen.dart';
 import '../themes/kinfolk_colors.dart';
+import '../widgets/clock_widget.dart';
+import '../widgets/smarthome_widget.dart';
+import '../widgets/timer_widget.dart';
+import '../widgets/voice_indicator_widget.dart';
+import '../widgets/weather_widget.dart';
 
 /// The main always-on family dashboard screen.
 /// Designed for 1080×1920 portrait orientation.
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voiceState = ref.watch(voiceStateProvider);
+    final showOverlay = voiceState != VoiceState.idle;
+
+    ref.listen<String?>(pendingSystemActionProvider, (previous, next) {
+      if (next == null || next == previous) {
+        return;
+      }
+
+      if (next == 'show_photo_frame') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) {
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PhotoFrameScreen()),
+          );
+          ref.read(voiceStateProvider.notifier).clearPendingSystemAction();
+        });
+        return;
+      }
+
+      ref.read(voiceStateProvider.notifier).clearPendingSystemAction();
+    });
+
     return Scaffold(
       backgroundColor: KinfolkColors.deepCharcoal,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Top section: Clock & Date (~35%)
-              const Expanded(flex: 35, child: _ClockSection()),
+        child: Stack(
+          children: [
+            // Main dashboard content
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top section: Clock & Date (~35%)
+                  const Expanded(flex: 35, child: _ClockSection()),
 
-              const SizedBox(height: 8),
-              const _SectionDivider(),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                  const _SectionDivider(),
+                  const SizedBox(height: 8),
 
-              // Middle section: Weather (~20%)
-              const Expanded(flex: 20, child: _WeatherSection()),
+                  // Middle section: Weather (~20%)
+                  const Expanded(flex: 20, child: _WeatherSection()),
 
-              const SizedBox(height: 8),
-              const _SectionDivider(),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                  const _SectionDivider(),
+                  const SizedBox(height: 8),
 
-              // Bottom section: Future widgets placeholder (~45%)
-              Expanded(flex: 45, child: _ComingSoonSection()),
-            ],
-          ),
+                  // Bottom section: Future widgets placeholder (~45%)
+                  Expanded(flex: 45, child: _ComingSoonSection()),
+                ],
+              ),
+            ),
+
+            // Voice indicator — top-right corner
+            const Positioned(top: 16, right: 16, child: VoiceIndicatorWidget()),
+
+            // Voice overlay — shown when pipeline is active
+            if (showOverlay) const VoiceOverlayScreen(),
+          ],
         ),
       ),
     );
@@ -57,27 +104,34 @@ class _WeatherSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: WeatherWidget(
-        weather: const WeatherData(
-          temperature: 72,
-          unit: TemperatureUnit.fahrenheit,
-          condition: 'Sunny',
-          location: 'Your Home',
-          feelsLike: 70,
-        ),
-      ),
-    );
+    return const Center(child: WeatherWidget());
   }
 }
 
-class _ComingSoonSection extends StatelessWidget {
+class _ComingSoonSection extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final music = ref.watch(musicProvider);
+    final showMiniPlayer = music.hasTrack || music.isPlaying;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Active timers — only visible when timers are running
+          const TimerWidget(),
+          const SizedBox(height: 12),
+
+          // Mini music player — visible when a track is loaded
+          if (showMiniPlayer) ...[
+            _MiniMusicPlayer(music: music),
+            const SizedBox(height: 12),
+          ],
+
+          // Smart home device controls
+          const SmarthomeWidget(),
+          const SizedBox(height: 12),
+
           Text(
             'Coming Soon',
             style: Theme.of(
@@ -97,12 +151,236 @@ class _ComingSoonSection extends StatelessWidget {
             subtitle: 'Shopping lists & to-dos',
           ),
           const SizedBox(height: 8),
-          const _PlaceholderCard(
-            icon: Icons.music_note,
-            title: 'Music',
-            subtitle: 'Now playing',
-          ),
+          // Music card — navigates to full music screen
+          _MusicCard(hasTrack: showMiniPlayer),
+          const SizedBox(height: 8),
+          _PhotoFrameCard(),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact now-playing bar for the dashboard. Shows current track,
+/// artist, and a play/pause toggle. Tapping navigates to the full
+/// music screen.
+class _MiniMusicPlayer extends ConsumerWidget {
+  final MusicState music;
+
+  const _MiniMusicPlayer({required this.music});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final track = music.currentTrack;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const MusicScreen()));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: KinfolkColors.darkCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: KinfolkColors.warmClay.withAlpha(51)),
+        ),
+        child: Row(
+          children: [
+            // Small album art
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: KinfolkColors.warmClay.withAlpha(38),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child:
+                  track?.albumArtUrl != null
+                      ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          track!.albumArtUrl!,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, __, ___) => const Icon(
+                                Icons.music_note,
+                                color: KinfolkColors.warmClay,
+                                size: 20,
+                              ),
+                        ),
+                      )
+                      : const Icon(
+                        Icons.music_note,
+                        color: KinfolkColors.warmClay,
+                        size: 20,
+                      ),
+            ),
+            const SizedBox(width: 12),
+            // Track info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    track?.title ?? 'Unknown Track',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: KinfolkColors.softCream,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    track?.artist ?? '',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: KinfolkColors.sageGray,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            // Play/pause button
+            IconButton(
+              onPressed: () {
+                if (music.isPlaying) {
+                  ref.read(musicProvider.notifier).pause();
+                } else {
+                  ref.read(musicProvider.notifier).play();
+                }
+              },
+              icon: Icon(
+                music.isPlaying
+                    ? Icons.pause_circle_filled
+                    : Icons.play_circle_filled,
+                color: KinfolkColors.warmClay,
+                size: 36,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: music.isPlaying ? 'Pause' : 'Play',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Music navigation card — replaces the static placeholder.
+class _MusicCard extends StatelessWidget {
+  final bool hasTrack;
+
+  const _MusicCard({required this.hasTrack});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const MusicScreen()));
+      },
+      child: Card(
+        color: KinfolkColors.darkCard,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.music_note,
+                color: KinfolkColors.warmClay,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Music',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: KinfolkColors.softCream,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      hasTrack ? 'Now playing' : 'Search & play music',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: KinfolkColors.sageGray,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: KinfolkColors.sageGray,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoFrameCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PhotoFrameScreen()),
+        );
+      },
+      child: Card(
+        color: KinfolkColors.darkCard,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.photo_library,
+                color: KinfolkColors.warmClay,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Photos',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: KinfolkColors.softCream,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      'Family photo slideshow',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: KinfolkColors.sageGray,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: KinfolkColors.sageGray,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

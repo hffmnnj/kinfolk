@@ -4,7 +4,9 @@ Kinfolk API Configuration.
 Uses environment variables with sensible defaults for local development.
 """
 
-from pydantic_settings import BaseSettings
+from typing import Optional
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -20,6 +22,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite:///./kinfolk.db"
+    database_encryption_key: str = "change-me-in-env"
 
     # CORS — allow Flutter app origins during development
     # Override via CORS_ORIGINS env var in production (comma-separated list)
@@ -34,11 +37,56 @@ class Settings(BaseSettings):
 
     # Weather API (optional)
     openweather_api_key: str = ""
+    weather_city: str = "San Francisco"
+    weather_units: str = "imperial"
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-    }
+    # Google Calendar OAuth
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: str = "http://localhost:8080/api/v1/auth/google/callback"
+
+    # Voice / wake word
+    wake_word_sensitivity: float = 0.5
+    wake_word_engine: str = "openwakeword"
+    audio_sample_rate: int = 16000
+    audio_channels: int = 1
+
+    # Speech-to-text (STT)
+    stt_mode: str = "local"
+    openai_api_key: Optional[str] = None
+    vosk_model_path: str = "./models/vosk-model-en-us"
+
+    # Text-to-Speech (TTS)
+    tts_engine: str = "nanotts"  # "nanotts" (offline) or "gtts" (network)
+    tts_speed: float = 1.0
+    tts_volume: float = 0.8
+
+    # Music (Mopidy JSON-RPC)
+    mopidy_url: str = "http://localhost:6680/mopidy/rpc"
+
+    # Natural Language Understanding (NLU)
+    nlu_confidence_threshold: float = 0.5
+    sentences_ini_path: str = "./backend/rhasspy/sentences.ini"
+
+    # CalDAV servers — JSON list of
+    # {url, username, password, calendar_name}
+    # Example:
+    # CALDAV_SERVERS='[{"url":"https://nc.example.com/remote.php/dav/",'
+    # '"username":"user","password":"pass","calendar_name":"personal"}]'
+    caldav_servers: list[dict] = []
+
+    # Home Assistant (optional)
+    ha_url: Optional[str] = None
+    ha_token: Optional[str] = None
+
+    # Photo frame
+    photos_directory: str = "~/Pictures"
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()
