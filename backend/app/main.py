@@ -27,6 +27,7 @@ from app.services.calendar_caldav import CalDAVCalendarService
 from app.services.calendar_google import GoogleCalendarService
 from app.services.calendar_sync import CalendarSyncService
 from app.services.home_assistant import HomeAssistantService
+from app.services.home_assistant_ws import HomeAssistantWSService
 from app.services.intent_dispatch import IntentDispatch, setup_handlers
 from app.services.music import MopidyMusicService
 from app.services.nlu import NLUService
@@ -77,6 +78,7 @@ async def lifespan(app: FastAPI):
     )
     music_service = MopidyMusicService(mopidy_url=settings.mopidy_url)
     ha_service = HomeAssistantService(settings_obj=settings)
+    ha_ws_service = HomeAssistantWSService(settings_obj=settings)
 
     # Timer service — persists to DB, fires TTS alerts on expiry
     timer_service = TimerService(
@@ -104,15 +106,18 @@ async def lifespan(app: FastAPI):
     app.state.calendar_sync = calendar_sync
     app.state.music_service = music_service
     app.state.ha_service = ha_service
+    app.state.ha_ws_service = ha_ws_service
     app.state.timer_service = timer_service
 
     await wake_word_service.start()
     await calendar_sync.start()
     await timer_service.start()
+    await ha_ws_service.start()
 
     try:
         yield
     finally:
+        await ha_ws_service.stop()
         await timer_service.stop()
         await calendar_sync.stop()
         await wake_word_service.stop()
