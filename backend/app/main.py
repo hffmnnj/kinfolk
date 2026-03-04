@@ -95,6 +95,7 @@ async def lifespan(app: FastAPI):
         music_service=music_service,
         ha_service=ha_service,
         timer_service=timer_service,
+        wake_word_service=wake_word_service,
     )
 
     app.state.wake_word_service = wake_word_service

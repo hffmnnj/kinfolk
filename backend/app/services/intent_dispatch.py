@@ -20,6 +20,7 @@ def setup_handlers(
     music_service=None,
     ha_service=None,
     timer_service=None,
+    wake_word_service=None,
 ) -> None:
     """Register real intent handlers, replacing built-in stubs.
 
@@ -102,7 +103,7 @@ def setup_handlers(
         SystemIntentHandler,
     )
 
-    system_handler = SystemIntentHandler()
+    system_handler = SystemIntentHandler(wake_word_service=wake_word_service)
     dispatch.register_handler(
         IntentCategory.SYSTEM,
         system_handler.handle,

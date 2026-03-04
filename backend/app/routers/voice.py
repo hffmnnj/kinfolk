@@ -111,7 +111,7 @@ async def voice_events_websocket(websocket: WebSocket):
     if wake_word_service is None:
         await websocket.send_json(
             {
-                "event": "voice_status",
+                "type": "voice_status",
                 "data": {
                     "wake_word": {"active": False, "engine": "unavailable"},
                     "listening": False,
@@ -123,7 +123,7 @@ async def voice_events_websocket(websocket: WebSocket):
 
     await websocket.send_json(
         {
-            "event": "voice_status",
+            "type": "voice_status",
             "data": wake_word_service.get_status(),
         }
     )

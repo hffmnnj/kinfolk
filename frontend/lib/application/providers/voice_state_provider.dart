@@ -9,11 +9,12 @@ import '../../infrastructure/api/voice_api_client.dart';
 /// Manages the voice interaction state machine and listens to backend
 /// WebSocket events for wake-word activations and pipeline transitions.
 class VoiceStateNotifier extends StateNotifier<VoiceState> {
+  final Ref _ref;
   final VoiceApiClient _client;
   StreamSubscription<VoiceEvent>? _subscription;
   Timer? _autoResetTimer;
 
-  VoiceStateNotifier({VoiceApiClient? client})
+  VoiceStateNotifier(this._ref, {VoiceApiClient? client})
     : _client = client ?? VoiceApiClient(),
       super(VoiceState.idle) {
     _connectWebSocket();
@@ -32,15 +33,30 @@ class VoiceStateNotifier extends StateNotifier<VoiceState> {
     switch (event.type) {
       case 'wake_word':
         startListening();
+        return;
       case 'stt_result':
         setProcessing();
+        return;
       case 'intent_result':
         setResponding();
+        return;
       case 'tts_done':
         resetToIdle();
+        return;
+      case 'system_action':
+        final action = event.action;
+        if (action != null && action.isNotEmpty) {
+          _ref.read(pendingSystemActionProvider.notifier).state = action;
+        }
+        return;
       default:
         debugPrint('VoiceStateNotifier: unhandled event type: ${event.type}');
+        return;
     }
+  }
+
+  void clearPendingSystemAction() {
+    _ref.read(pendingSystemActionProvider.notifier).state = null;
   }
 
   /// Transitions to the listening state (wake word detected or manual tap).
@@ -93,7 +109,10 @@ class VoiceStateNotifier extends StateNotifier<VoiceState> {
 }
 
 /// Global provider for the voice interaction state.
+final pendingSystemActionProvider = StateProvider<String?>((ref) => null);
+
+/// Global provider for the voice interaction state.
 final voiceStateProvider =
     StateNotifierProvider<VoiceStateNotifier, VoiceState>((ref) {
-      return VoiceStateNotifier();
+      return VoiceStateNotifier(ref);
     });

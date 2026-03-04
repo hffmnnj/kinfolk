@@ -27,23 +27,17 @@ class WakeWordService:
         channels: int,
         wake_words: tuple[str, ...] = ("hey kin", "kinfolk"),
         detector_factory: Callable[[], Any] | None = None,
-        audio_stream_factory: (
-            Callable[[Callable[..., Any]], Any] | None
-        ) = None,
+        audio_stream_factory: (Callable[[Callable[..., Any]], Any] | None) = None,
     ) -> None:
         self._sensitivity = sensitivity
         self._engine = engine
         self._sample_rate = sample_rate
         self._channels = channels
         self._wake_words = wake_words
-        self._wake_word_tokens = tuple(
-            _normalize_label(word) for word in wake_words
-        )
+        self._wake_word_tokens = tuple(_normalize_label(word) for word in wake_words)
 
         self._detector_factory = detector_factory or self._build_detector
-        self._audio_stream_factory = (
-            audio_stream_factory or self._build_audio_stream
-        )
+        self._audio_stream_factory = audio_stream_factory or self._build_audio_stream
 
         self._detector: Any | None = None
         self._audio_stream: Any | None = None
@@ -135,9 +129,7 @@ class WakeWordService:
             },
             "clients": len(self._clients),
             "last_detection": (
-                self._last_detection.isoformat()
-                if self._last_detection
-                else None
+                self._last_detection.isoformat() if self._last_detection else None
             ),
         }
 
@@ -145,10 +137,19 @@ class WakeWordService:
         """Broadcast wake word detection to connected clients."""
         self._last_detection = datetime.now(timezone.utc)
         payload = {
-            "event": "wake_word_detected",
-            "wake_word": wake_word,
-            "score": score,
+            "type": "wake_word",
+            "keyword": wake_word,
+            "confidence": score,
             "timestamp": self._last_detection.isoformat(),
+        }
+        await self._broadcast(payload)
+
+    async def notify_system_action(self, action: str) -> None:
+        """Broadcast a system action event to connected clients."""
+        payload = {
+            "type": "system_action",
+            "action": action,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         await self._broadcast(payload)
 
@@ -286,9 +287,7 @@ class WakeWordService:
                 continue
 
             normalized = _normalize_label(label)
-            if not any(
-                token in normalized for token in self._wake_word_tokens
-            ):
+            if not any(token in normalized for token in self._wake_word_tokens):
                 continue
 
             if score > best_score:

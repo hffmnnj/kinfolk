@@ -119,8 +119,9 @@ async def test_wake_word_event_broadcast_with_mocked_dependencies(monkeypatch):
     await service.stop()
 
     assert len(client.messages) == 1
-    assert client.messages[0]["event"] == "wake_word_detected"
-    assert client.messages[0]["wake_word"] == "kinfolk"
+    assert client.messages[0]["type"] == "wake_word"
+    assert client.messages[0]["keyword"] == "kinfolk"
+    assert client.messages[0]["confidence"] == 0.99
 
 
 class _RouterWakeWordService:
@@ -141,9 +142,9 @@ class _RouterWakeWordService:
         self.registered += 1
         await websocket.send_json(
             {
-                "event": "wake_word_detected",
-                "wake_word": "kinfolk",
-                "score": 0.99,
+                "type": "wake_word",
+                "keyword": "kinfolk",
+                "confidence": 0.99,
             }
         )
 
@@ -165,9 +166,9 @@ def test_voice_websocket_connection_and_message_receipt():
             wake_msg = websocket.receive_json()
             websocket.close()
 
-    assert status_msg["event"] == "voice_status"
-    assert wake_msg["event"] == "wake_word_detected"
-    assert wake_msg["wake_word"] == "kinfolk"
+    assert status_msg["type"] == "voice_status"
+    assert wake_msg["type"] == "wake_word"
+    assert wake_msg["keyword"] == "kinfolk"
     assert mock_service.registered == 1
 
 

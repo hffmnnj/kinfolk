@@ -23,6 +23,27 @@ class DashboardScreen extends ConsumerWidget {
     final voiceState = ref.watch(voiceStateProvider);
     final showOverlay = voiceState != VoiceState.idle;
 
+    ref.listen<String?>(pendingSystemActionProvider, (previous, next) {
+      if (next == null || next == previous) {
+        return;
+      }
+
+      if (next == 'show_photo_frame') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) {
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PhotoFrameScreen()),
+          );
+          ref.read(voiceStateProvider.notifier).clearPendingSystemAction();
+        });
+        return;
+      }
+
+      ref.read(voiceStateProvider.notifier).clearPendingSystemAction();
+    });
+
     return Scaffold(
       backgroundColor: KinfolkColors.deepCharcoal,
       body: SafeArea(

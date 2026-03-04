@@ -82,7 +82,6 @@ class MopidyMusicService:
             "core.library.search",
             {
                 "query": {"any": [query]},
-                "uris": ["local:"],
                 "exact": False,
             },
         )

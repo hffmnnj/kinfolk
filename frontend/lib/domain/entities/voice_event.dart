@@ -12,6 +12,7 @@ class VoiceEvent {
   final double? confidence;
   final String? text;
   final String? intent;
+  final String? action;
   final DateTime timestamp;
 
   const VoiceEvent({
@@ -20,6 +21,7 @@ class VoiceEvent {
     this.confidence,
     this.text,
     this.intent,
+    this.action,
     required this.timestamp,
   });
 
@@ -30,6 +32,7 @@ class VoiceEvent {
       confidence: (json['confidence'] as num?)?.toDouble(),
       text: json['text'] as String?,
       intent: json['intent'] as String?,
+      action: json['action'] as String?,
       timestamp:
           json['timestamp'] != null
               ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
