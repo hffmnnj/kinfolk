@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/providers/voice_state_provider.dart';
 import '../../domain/entities/voice_event.dart';
-import '../../domain/entities/weather.dart';
+import '../screens/photo_frame_screen.dart';
+import '../screens/voice_overlay_screen.dart';
+import '../themes/kinfolk_colors.dart';
 import '../widgets/clock_widget.dart';
 import '../widgets/voice_indicator_widget.dart';
 import '../widgets/weather_widget.dart';
-import '../screens/voice_overlay_screen.dart';
-import '../themes/kinfolk_colors.dart';
 
 /// The main always-on family dashboard screen.
 /// Designed for 1080×1920 portrait orientation.
@@ -79,17 +79,7 @@ class _WeatherSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: WeatherWidget(
-        weather: const WeatherData(
-          temperature: 72,
-          unit: TemperatureUnit.fahrenheit,
-          condition: 'Sunny',
-          location: 'Your Home',
-          feelsLike: 70,
-        ),
-      ),
-    );
+    return const Center(child: WeatherWidget());
   }
 }
 
@@ -124,7 +114,63 @@ class _ComingSoonSection extends StatelessWidget {
             title: 'Music',
             subtitle: 'Now playing',
           ),
+          const SizedBox(height: 8),
+          _PhotoFrameCard(),
         ],
+      ),
+    );
+  }
+}
+
+class _PhotoFrameCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PhotoFrameScreen()),
+        );
+      },
+      child: Card(
+        color: KinfolkColors.darkCard,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.photo_library,
+                color: KinfolkColors.warmClay,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Photos',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: KinfolkColors.softCream,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      'Family photo slideshow',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: KinfolkColors.sageGray,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: KinfolkColors.sageGray,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

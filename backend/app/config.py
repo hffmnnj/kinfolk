@@ -37,6 +37,8 @@ class Settings(BaseSettings):
 
     # Weather API (optional)
     openweather_api_key: str = ""
+    weather_city: str = "San Francisco"
+    weather_units: str = "imperial"
 
     # Google Calendar OAuth
     google_client_id: Optional[str] = None
@@ -59,6 +61,9 @@ class Settings(BaseSettings):
     tts_speed: float = 1.0
     tts_volume: float = 0.8
 
+    # Music (Mopidy JSON-RPC)
+    mopidy_url: str = "http://localhost:6680/mopidy/rpc"
+
     # Natural Language Understanding (NLU)
     nlu_confidence_threshold: float = 0.5
     sentences_ini_path: str = "./backend/rhasspy/sentences.ini"
@@ -69,6 +74,13 @@ class Settings(BaseSettings):
     # CALDAV_SERVERS='[{"url":"https://nc.example.com/remote.php/dav/",'
     # '"username":"user","password":"pass","calendar_name":"personal"}]'
     caldav_servers: list[dict] = []
+
+    # Home Assistant (optional)
+    ha_url: Optional[str] = None
+    ha_token: Optional[str] = None
+
+    # Photo frame
+    photos_directory: str = "~/Pictures"
 
     model_config = SettingsConfigDict(
         env_file=".env",

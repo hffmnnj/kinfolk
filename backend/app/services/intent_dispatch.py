@@ -19,6 +19,7 @@ def setup_handlers(
     weather_service=None,
     music_service=None,
     ha_service=None,
+    timer_service=None,
 ) -> None:
     """Register real intent handlers, replacing built-in stubs.
 
@@ -82,6 +83,28 @@ def setup_handlers(
             IntentCategory.SMARTHOME,
             smarthome_handler.handle,
         )
+
+    if timer_service is not None:
+        from app.services.intent_handlers.timer_handler import (
+            TimerIntentHandler,
+        )
+
+        timer_handler = TimerIntentHandler(timer_service=timer_service)
+        dispatch.register_handler(
+            IntentCategory.TIMERS,
+            timer_handler.handle,
+        )
+
+    # System handler (photo frame, stop, etc.) — always available
+    from app.services.intent_handlers.system_handler import (
+        SystemIntentHandler,
+    )
+
+    system_handler = SystemIntentHandler()
+    dispatch.register_handler(
+        IntentCategory.SYSTEM,
+        system_handler.handle,
+    )
 
 
 class IntentDispatch:

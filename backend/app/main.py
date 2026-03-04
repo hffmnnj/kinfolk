@@ -11,13 +11,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import Base, engine, SessionLocal
-from app.models import Event, Task, User, VoiceHistory  # noqa: F401
+from app.models import Event, Task, Timer, User, VoiceHistory  # noqa: F401
 from app.routers import (
     auth,
     calendar,
     music,
     smarthome,
     tasks,
+    timers,
     users,
     voice,
     weather,
@@ -31,6 +32,7 @@ from app.services.music import MopidyMusicService
 from app.services.nlu import NLUService
 from app.services.stt import STTService
 from app.services.tts import TTSService
+from app.services.timers import TimerService
 from app.services.voice_pipeline import VoicePipeline
 from app.services.wake_word import WakeWordService
 from app.services.weather import WeatherService
@@ -76,6 +78,12 @@ async def lifespan(app: FastAPI):
     music_service = MopidyMusicService(mopidy_url=settings.mopidy_url)
     ha_service = HomeAssistantService(settings_obj=settings)
 
+    # Timer service — persists to DB, fires TTS alerts on expiry
+    timer_service = TimerService(
+        db_factory=SessionLocal,
+        tts_service=tts_service,
+    )
+
     # Wire real intent handlers now that backing services exist
     setup_handlers(
         intent_dispatch_service,
@@ -84,6 +92,7 @@ async def lifespan(app: FastAPI):
         weather_service=weather_service,
         music_service=music_service,
         ha_service=ha_service,
+        timer_service=timer_service,
     )
 
     app.state.wake_word_service = wake_word_service
@@ -95,13 +104,16 @@ async def lifespan(app: FastAPI):
     app.state.calendar_sync = calendar_sync
     app.state.music_service = music_service
     app.state.ha_service = ha_service
+    app.state.timer_service = timer_service
 
     await wake_word_service.start()
     await calendar_sync.start()
+    await timer_service.start()
 
     try:
         yield
     finally:
+        await timer_service.stop()
         await calendar_sync.stop()
         await wake_word_service.stop()
 
@@ -139,3 +151,4 @@ app.include_router(voice.router, prefix="/api/v1/voice", tags=["voice"])
 app.include_router(smarthome.router, prefix="/api/v1/smarthome", tags=["smarthome"])
 app.include_router(weather.router, prefix="/api/v1/weather", tags=["weather"])
 app.include_router(music.router, prefix="/api/v1/music", tags=["music"])
+app.include_router(timers.router, prefix="/api/v1/timers", tags=["timers"])
