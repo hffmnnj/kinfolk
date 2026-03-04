@@ -125,12 +125,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware — use settings-driven origins (never wildcard with credentials)
+# CORS middleware — use settings-driven origins
+# (never wildcard with credentials)
 _cors_origins = ["*"] if settings.cors_allow_all else settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
-    allow_credentials=not settings.cors_allow_all,  # credentials + wildcard is forbidden
+    # credentials + wildcard is forbidden
+    allow_credentials=not settings.cors_allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -145,10 +147,18 @@ async def health_check():
 # API v1 routers
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["calendar"])
+app.include_router(
+    calendar.router,
+    prefix="/api/v1/calendar",
+    tags=["calendar"],
+)
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(voice.router, prefix="/api/v1/voice", tags=["voice"])
-app.include_router(smarthome.router, prefix="/api/v1/smarthome", tags=["smarthome"])
+app.include_router(
+    smarthome.router,
+    prefix="/api/v1/smarthome",
+    tags=["smarthome"],
+)
 app.include_router(weather.router, prefix="/api/v1/weather", tags=["weather"])
 app.include_router(music.router, prefix="/api/v1/music", tags=["music"])
 app.include_router(timers.router, prefix="/api/v1/timers", tags=["timers"])

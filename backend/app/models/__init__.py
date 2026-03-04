@@ -3,6 +3,7 @@
 from app.models.user import User
 from app.models.event import Event
 from app.models.task import Task
+from app.models.timer import Timer
 from app.models.voice_history import VoiceHistory
 
-__all__ = ["User", "Event", "Task", "VoiceHistory"]
+__all__ = ["User", "Event", "Task", "Timer", "VoiceHistory"]

@@ -65,7 +65,9 @@ def setup_handlers(
         )
 
     if music_service is not None:
-        from app.services.intent_handlers.music_handler import MusicIntentHandler
+        from app.services.intent_handlers.music_handler import (
+            MusicIntentHandler,
+        )
 
         music_handler = MusicIntentHandler(music_service=music_service)
         dispatch.register_handler(

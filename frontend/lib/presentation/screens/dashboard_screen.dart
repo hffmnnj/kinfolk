@@ -6,6 +6,7 @@ import '../screens/photo_frame_screen.dart';
 import '../screens/voice_overlay_screen.dart';
 import '../themes/kinfolk_colors.dart';
 import '../widgets/clock_widget.dart';
+import '../widgets/timer_widget.dart';
 import '../widgets/voice_indicator_widget.dart';
 import '../widgets/weather_widget.dart';
 
@@ -90,6 +91,9 @@ class _ComingSoonSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Active timers — only visible when timers are running
+          const TimerWidget(),
+          const SizedBox(height: 12),
           Text(
             'Coming Soon',
             style: Theme.of(
