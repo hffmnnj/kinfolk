@@ -6,7 +6,7 @@ import '../themes/kinfolk_colors.dart';
 
 /// Weather display widget for the Kinfolk dashboard.
 /// Fetches live data from the WeatherProvider and shows current
-/// conditions with a 3-day forecast strip.
+/// conditions with a 5-day forecast strip.
 class WeatherWidget extends ConsumerWidget {
   const WeatherWidget({super.key});
 
@@ -125,7 +125,7 @@ class _CurrentWeatherRow extends StatelessWidget {
   }
 }
 
-/// Horizontal strip showing up to 3 days of forecast.
+/// Horizontal strip showing up to 5 days of forecast.
 class _ForecastStrip extends StatelessWidget {
   final List<ForecastDay> forecast;
 
@@ -133,8 +133,8 @@ class _ForecastStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show at most 3 days
-    final days = forecast.take(3).toList();
+    // Show at most 5 days
+    final days = forecast.take(5).toList();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
