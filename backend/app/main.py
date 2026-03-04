@@ -10,9 +10,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, SessionLocal
 from app.models import Event, Task, User, VoiceHistory  # noqa: F401
-from app.routers import calendar, smarthome, tasks, users, voice
+from app.routers import auth, calendar, smarthome, tasks, users, voice
+from app.services.calendar_caldav import CalDAVCalendarService
+from app.services.calendar_google import GoogleCalendarService
+from app.services.calendar_sync import CalendarSyncService
 from app.services.intent_dispatch import IntentDispatch
 from app.services.nlu import NLUService
 from app.services.stt import STTService
@@ -23,7 +26,7 @@ from app.services.wake_word import WakeWordService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create database tables on startup."""
+    """Create database tables on startup and initialize services."""
     if not app.dependency_overrides:
         Base.metadata.create_all(bind=engine)
 
@@ -45,17 +48,31 @@ async def lifespan(app: FastAPI):
         tts_service=tts_service,
     )
 
+    # Calendar sync — wire up available sources
+    google_service = GoogleCalendarService(settings=settings)
+    caldav_service = CalDAVCalendarService(app_settings=settings)
+    calendar_sync = CalendarSyncService(
+        google_service=google_service,
+        caldav_service=caldav_service,
+        db_factory=SessionLocal,
+        settings=settings,
+    )
+
     app.state.wake_word_service = wake_word_service
     app.state.stt_service = stt_service
     app.state.tts_service = tts_service
     app.state.nlu_service = nlu_service
     app.state.intent_dispatch_service = intent_dispatch_service
     app.state.voice_pipeline = voice_pipeline
+    app.state.calendar_sync = calendar_sync
+
     await wake_word_service.start()
+    await calendar_sync.start()
 
     try:
         yield
     finally:
+        await calendar_sync.stop()
         await wake_word_service.stop()
 
 
@@ -85,6 +102,7 @@ async def health_check():
 
 # API v1 routers
 app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(calendar.router, prefix="/api/v1/calendar", tags=["calendar"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(voice.router, prefix="/api/v1/voice", tags=["voice"])
