@@ -74,34 +74,36 @@ class _WeatherSection extends StatelessWidget {
 class _ComingSoonSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Coming Soon',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineLarge?.copyWith(color: KinfolkColors.sageGray),
-        ),
-        const SizedBox(height: 12),
-        const _PlaceholderCard(
-          icon: Icons.calendar_today,
-          title: 'Calendar',
-          subtitle: 'Shared family events',
-        ),
-        const SizedBox(height: 8),
-        const _PlaceholderCard(
-          icon: Icons.checklist,
-          title: 'Tasks',
-          subtitle: 'Shopping lists & to-dos',
-        ),
-        const SizedBox(height: 8),
-        const _PlaceholderCard(
-          icon: Icons.music_note,
-          title: 'Music',
-          subtitle: 'Now playing',
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Coming Soon',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineLarge?.copyWith(color: KinfolkColors.sageGray),
+          ),
+          const SizedBox(height: 12),
+          const _PlaceholderCard(
+            icon: Icons.calendar_today,
+            title: 'Calendar',
+            subtitle: 'Shared family events',
+          ),
+          const SizedBox(height: 8),
+          const _PlaceholderCard(
+            icon: Icons.checklist,
+            title: 'Tasks',
+            subtitle: 'Shopping lists & to-dos',
+          ),
+          const SizedBox(height: 8),
+          const _PlaceholderCard(
+            icon: Icons.music_note,
+            title: 'Music',
+            subtitle: 'Now playing',
+          ),
+        ],
+      ),
     );
   }
 }
