@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     # Weather API (optional)
     openweather_api_key: str = ""
 
+    # Google Calendar OAuth
+    google_client_id: Optional[str] = None
+    google_client_secret: Optional[str] = None
+    google_redirect_uri: str = "http://localhost:8080/api/v1/auth/google/callback"
+
     # Voice / wake word
     wake_word_sensitivity: float = 0.5
     wake_word_engine: str = "openwakeword"
@@ -57,6 +62,13 @@ class Settings(BaseSettings):
     # Natural Language Understanding (NLU)
     nlu_confidence_threshold: float = 0.5
     sentences_ini_path: str = "./backend/rhasspy/sentences.ini"
+
+    # CalDAV servers — JSON list of
+    # {url, username, password, calendar_name}
+    # Example:
+    # CALDAV_SERVERS='[{"url":"https://nc.example.com/remote.php/dav/",'
+    # '"username":"user","password":"pass","calendar_name":"personal"}]'
+    caldav_servers: list[dict] = []
 
     model_config = SettingsConfigDict(
         env_file=".env",
