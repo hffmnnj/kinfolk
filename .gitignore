@@ -4,7 +4,10 @@
 # ===========================
 # Project-specific ignores
 # ===========================
-docs/
+# Planning/spec artifacts (not developer docs)
+docs/SPEC.md
+docs/FEATURES.md
+docs/ARCHITECTURE.md
 brand/
 mockups/
 QUICKSTART.md
