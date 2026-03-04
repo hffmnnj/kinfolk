@@ -1,0 +1,107 @@
+# Kinfolk — Docker Compose (Backend Services)
+#
+# Boots the backend stack: FastAPI, Mopidy music server, and
+# Wyoming-OpenWakeWord for wake word detection.
+#
+# Flutter runs natively on the host with display passthrough —
+# it is NOT containerised.
+#
+# Usage:
+#   cp .env.example .env   # fill in your values
+#   docker compose up -d
+#   docker compose logs -f
+#
+# Ports:
+#   8080  — Kinfolk API (FastAPI)
+#   6680  — Mopidy HTTP + JSON-RPC
+#   10400 — Wyoming openWakeWord (internal)
+
+services:
+  # ── Kinfolk Backend (FastAPI) ──────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kinfolk-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ./.env:/app/.env:ro
+    environment:
+      - DATABASE_URL=sqlite:////data/kinfolk.db
+      - PHOTOS_DIRECTORY=/data/photos
+      - VOSK_MODEL_PATH=/data/models/vosk-model-en-us
+      - MOPIDY_URL=http://mopidy:6680/mopidy/rpc
+    depends_on:
+      mopidy:
+        condition: service_healthy
+      rhasspy:
+        condition: service_started
+    networks:
+      - kinfolk-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  # ── Mopidy Music Server ────────────────────────────────────
+  mopidy:
+    image: wernight/mopidy:latest
+    container_name: kinfolk-mopidy
+    restart: unless-stopped
+    ports:
+      - "6680:6680"
+    volumes:
+      - ./data/music:/var/lib/mopidy/media:ro
+      - mopidy-data:/var/lib/mopidy/local
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    command: >
+      mopidy
+        --option http/hostname=::
+        --option http/port=6680
+        --option http/allowed_origins=*
+        --option audio/output=autoaudiosink
+        --option file/media_dirs=/var/lib/mopidy/media
+        --option local/media_dir=/var/lib/mopidy/media
+    networks:
+      - kinfolk-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6680/mopidy/rpc"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ── Wyoming openWakeWord ───────────────────────────────────
+  rhasspy:
+    image: rhasspy/wyoming-openwakeword:latest
+    container_name: kinfolk-wakeword
+    restart: unless-stopped
+    ports:
+      - "10400:10400"
+    devices:
+      - /dev/snd:/dev/snd
+    volumes:
+      - ./docker/rhasspy/models:/custom
+      - /run/user/1000/pulse:/run/user/1000/pulse
+    environment:
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    command: >
+      --preload-model ok_nabu
+      --custom-model-dir /custom
+    networks:
+      - kinfolk-net
+
+networks:
+  kinfolk-net:
+    driver: bridge
+
+volumes:
+  mopidy-data:
