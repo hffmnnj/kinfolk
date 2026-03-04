@@ -1,42 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../application/providers/voice_state_provider.dart';
+import '../../domain/entities/voice_event.dart';
 import '../../domain/entities/weather.dart';
 import '../widgets/clock_widget.dart';
+import '../widgets/voice_indicator_widget.dart';
 import '../widgets/weather_widget.dart';
+import '../screens/voice_overlay_screen.dart';
 import '../themes/kinfolk_colors.dart';
 
 /// The main always-on family dashboard screen.
 /// Designed for 1080×1920 portrait orientation.
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final voiceState = ref.watch(voiceStateProvider);
+    final showOverlay = voiceState != VoiceState.idle;
+
     return Scaffold(
       backgroundColor: KinfolkColors.deepCharcoal,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Top section: Clock & Date (~35%)
-              const Expanded(flex: 35, child: _ClockSection()),
+        child: Stack(
+          children: [
+            // Main dashboard content
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Top section: Clock & Date (~35%)
+                  const Expanded(flex: 35, child: _ClockSection()),
 
-              const SizedBox(height: 8),
-              const _SectionDivider(),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                  const _SectionDivider(),
+                  const SizedBox(height: 8),
 
-              // Middle section: Weather (~20%)
-              const Expanded(flex: 20, child: _WeatherSection()),
+                  // Middle section: Weather (~20%)
+                  const Expanded(flex: 20, child: _WeatherSection()),
 
-              const SizedBox(height: 8),
-              const _SectionDivider(),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 8),
+                  const _SectionDivider(),
+                  const SizedBox(height: 8),
 
-              // Bottom section: Future widgets placeholder (~45%)
-              Expanded(flex: 45, child: _ComingSoonSection()),
-            ],
-          ),
+                  // Bottom section: Future widgets placeholder (~45%)
+                  Expanded(flex: 45, child: _ComingSoonSection()),
+                ],
+              ),
+            ),
+
+            // Voice indicator — top-right corner
+            const Positioned(top: 16, right: 16, child: VoiceIndicatorWidget()),
+
+            // Voice overlay — shown when pipeline is active
+            if (showOverlay) const VoiceOverlayScreen(),
+          ],
         ),
       ),
     );

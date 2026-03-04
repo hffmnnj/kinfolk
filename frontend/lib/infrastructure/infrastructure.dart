@@ -1,2 +1,2 @@
 // Infrastructure layer barrel export
-// Add exports here as API clients and database are created
+export 'api/voice_api_client.dart';

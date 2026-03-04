@@ -1,2 +1,3 @@
 // Domain layer barrel export
+export 'entities/voice_event.dart';
 export 'entities/weather.dart';
