@@ -232,10 +232,10 @@ class TestHandleGetEvents:
 
 
 class TestHandleDeleteEvent:
-    """Test cancelling events via voice."""
+    """Test cancelling events via voice with 2-step confirmation."""
 
     @pytest.mark.asyncio
-    async def test_delete_matching_event(self):
+    async def test_delete_asks_for_confirmation(self):
         now = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
         meeting = CalendarEvent(
             title="3pm meeting",
@@ -247,15 +247,104 @@ class TestHandleDeleteEvent:
 
         intent = _intent(
             "cancel_calendar_event",
-            {
-                "event": "3pm meeting",
-            },
+            {"event": "3pm meeting"},
         )
         response = await handler.handle(intent)
+
+        assert "are you sure" in response.lower()
+        assert "3pm meeting" in response
+        # Event NOT yet removed
+        assert len(sync._cached_events) == 1
+
+    @pytest.mark.asyncio
+    async def test_delete_confirmed_removes_event(self):
+        now = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+        meeting = CalendarEvent(
+            title="3pm meeting",
+            start_time=now.replace(hour=15),
+            end_time=now.replace(hour=16),
+        )
+        sync = _make_sync_service([meeting])
+        handler = CalendarIntentHandler(calendar_sync_service=sync)
+
+        # Step 1: request deletion → confirmation prompt
+        await handler.handle(
+            _intent("cancel_calendar_event", {"event": "3pm meeting"}),
+        )
+        assert len(sync._cached_events) == 1
+
+        # Step 2: confirm with "yes"
+        response = await handler.handle(
+            _intent("cancel_calendar_event", {"event": "yes"}),
+        )
 
         assert "cancelled" in response.lower()
         assert "3pm meeting" in response
         assert len(sync._cached_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_delete_confirm_variants(self):
+        """Confirm words like 'yeah', 'confirm', 'sure' all work."""
+        now = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+
+        for word in ("yeah", "confirm", "sure", "yep", "do it"):
+            meeting = CalendarEvent(
+                title="standup",
+                start_time=now.replace(hour=9),
+                end_time=now.replace(hour=10),
+            )
+            sync = _make_sync_service([meeting])
+            handler = CalendarIntentHandler(calendar_sync_service=sync)
+
+            await handler.handle(
+                _intent("cancel_calendar_event", {"event": "standup"}),
+            )
+            response = await handler.handle(
+                _intent("cancel_calendar_event", {"event": word}),
+            )
+
+            assert "cancelled" in response.lower(), (
+                f"Confirm word '{word}' did not trigger deletion"
+            )
+            assert len(sync._cached_events) == 0
+
+    @pytest.mark.asyncio
+    async def test_delete_new_target_replaces_pending(self):
+        """A new delete intent while pending replaces the pending target."""
+        now = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
+        meeting_a = CalendarEvent(
+            title="meeting A",
+            start_time=now.replace(hour=14),
+            end_time=now.replace(hour=15),
+        )
+        meeting_b = CalendarEvent(
+            title="meeting B",
+            start_time=now.replace(hour=16),
+            end_time=now.replace(hour=17),
+        )
+        sync = _make_sync_service([meeting_a, meeting_b])
+        handler = CalendarIntentHandler(calendar_sync_service=sync)
+
+        # Request delete A
+        await handler.handle(
+            _intent("cancel_calendar_event", {"event": "meeting A"}),
+        )
+        # Change mind — request delete B instead
+        response = await handler.handle(
+            _intent("cancel_calendar_event", {"event": "meeting B"}),
+        )
+
+        assert "are you sure" in response.lower()
+        assert "meeting B" in response
+
+        # Confirm → should delete B, not A
+        response = await handler.handle(
+            _intent("cancel_calendar_event", {"event": "yes"}),
+        )
+        assert "meeting B" in response
+        assert "cancelled" in response.lower()
+        assert len(sync._cached_events) == 1
+        assert sync._cached_events[0].title == "meeting A"
 
     @pytest.mark.asyncio
     async def test_delete_no_match_returns_not_found(self):
@@ -272,9 +361,7 @@ class TestHandleDeleteEvent:
 
         intent = _intent(
             "cancel_calendar_event",
-            {
-                "event": "nonexistent event",
-            },
+            {"event": "nonexistent event"},
         )
         response = await handler.handle(intent)
 
@@ -292,7 +379,7 @@ class TestHandleDeleteEvent:
         assert "which event" in response.lower()
 
     @pytest.mark.asyncio
-    async def test_delete_partial_title_match(self):
+    async def test_delete_partial_title_match_asks_confirmation(self):
         now = datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc)
         meeting = CalendarEvent(
             title="dentist appointment",
@@ -304,14 +391,14 @@ class TestHandleDeleteEvent:
 
         intent = _intent(
             "cancel_calendar_event",
-            {
-                "event": "dentist",
-            },
+            {"event": "dentist"},
         )
         response = await handler.handle(intent)
 
-        assert "cancelled" in response.lower()
+        assert "are you sure" in response.lower()
         assert "dentist appointment" in response
+        # Not yet deleted
+        assert len(sync._cached_events) == 1
 
 
 # ---------------------------------------------------------------------------

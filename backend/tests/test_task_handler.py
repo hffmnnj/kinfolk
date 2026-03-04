@@ -216,31 +216,103 @@ class TestHandleGetTasks:
 
 
 class TestHandleCompleteTask:
-    """Test completing tasks via voice."""
+    """Test completing tasks via voice with 2-step confirmation."""
 
     @pytest.mark.asyncio
-    async def test_complete_matching_task(self):
+    async def test_complete_asks_for_confirmation(self):
         task = Task(title="call doctor", list_id="todo", completed=False)
         handler, mock_session = _make_handler([task])
 
         intent = _intent("complete_task", {"item": "call doctor"})
         response = await handler.handle(intent)
 
+        # Should NOT be completed yet
+        assert task.completed is False
+        assert "call doctor" in response
+        assert "say yes to confirm" in response.lower()
+
+    @pytest.mark.asyncio
+    async def test_complete_confirmed_marks_done(self):
+        task = Task(title="call doctor", list_id="todo", completed=False)
+        handler, mock_session = _make_handler([task])
+
+        # Mock merge to return the same task object
+        mock_session.merge.return_value = task
+
+        # Step 1: request completion → confirmation prompt
+        await handler.handle(
+            _intent("complete_task", {"item": "call doctor"}),
+        )
+        assert task.completed is False
+
+        # Step 2: confirm with "yes"
+        response = await handler.handle(
+            _intent("complete_task", {"item": "yes"}),
+        )
+
         assert task.completed is True
-        mock_session.commit.assert_called_once()
+        mock_session.merge.assert_called_once()
         assert "call doctor" in response
         assert "complete" in response.lower() or "done" in response.lower()
 
     @pytest.mark.asyncio
-    async def test_complete_partial_match(self):
+    async def test_complete_confirm_variants(self):
+        """Confirm words like 'yeah', 'confirm', 'sure' all work."""
+        for word in ("yeah", "confirm", "sure", "yep", "do it"):
+            task = Task(title="laundry", list_id="todo", completed=False)
+            handler, mock_session = _make_handler([task])
+            mock_session.merge.return_value = task
+
+            await handler.handle(
+                _intent("complete_task", {"item": "laundry"}),
+            )
+            response = await handler.handle(
+                _intent("complete_task", {"item": word}),
+            )
+
+            assert task.completed is True, (
+                f"Confirm word '{word}' did not trigger completion"
+            )
+            assert "complete" in response.lower() or "done" in response.lower()
+
+    @pytest.mark.asyncio
+    async def test_complete_partial_match_asks_confirmation(self):
         task = Task(title="call doctor smith", list_id="todo", completed=False)
         handler, mock_session = _make_handler([task])
 
         intent = _intent("complete_task", {"item": "call doctor"})
         response = await handler.handle(intent)
 
-        assert task.completed is True
+        assert task.completed is False
         assert "call doctor smith" in response
+        assert "say yes to confirm" in response.lower()
+
+    @pytest.mark.asyncio
+    async def test_complete_new_target_replaces_pending(self):
+        """A new complete intent while pending replaces the pending target."""
+        task_a = Task(title="call doctor", list_id="todo", completed=False)
+        task_b = Task(title="buy flowers", list_id="todo", completed=False)
+        handler, mock_session = _make_handler([task_a, task_b])
+        mock_session.merge.return_value = task_b
+
+        # Request complete A
+        await handler.handle(
+            _intent("complete_task", {"item": "call doctor"}),
+        )
+        # Change mind — request complete B instead
+        response = await handler.handle(
+            _intent("complete_task", {"item": "buy flowers"}),
+        )
+        assert "buy flowers" in response
+        assert "say yes to confirm" in response.lower()
+
+        # Confirm → should complete B, not A
+        response = await handler.handle(
+            _intent("complete_task", {"item": "yes"}),
+        )
+        assert "buy flowers" in response
+        assert task_b.completed is True
+        assert task_a.completed is False
 
     @pytest.mark.asyncio
     async def test_complete_no_match(self):
@@ -263,13 +335,20 @@ class TestHandleCompleteTask:
         assert "which task" in response.lower()
 
     @pytest.mark.asyncio
-    async def test_complete_db_error_returns_apology(self):
+    async def test_complete_db_error_on_confirm_returns_apology(self):
         task = Task(title="call doctor", list_id="todo", completed=False)
         handler, mock_session = _make_handler([task])
+        mock_session.merge.return_value = task
         mock_session.commit.side_effect = RuntimeError("DB error")
 
-        intent = _intent("complete_task", {"item": "call doctor"})
-        response = await handler.handle(intent)
+        # Step 1: request completion
+        await handler.handle(
+            _intent("complete_task", {"item": "call doctor"}),
+        )
+        # Step 2: confirm
+        response = await handler.handle(
+            _intent("complete_task", {"item": "yes"}),
+        )
 
         assert "sorry" in response.lower()
         mock_session.rollback.assert_called_once()

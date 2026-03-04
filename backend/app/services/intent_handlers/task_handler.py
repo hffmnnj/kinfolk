@@ -60,11 +60,15 @@ def _list_label(list_id: str) -> str:
     return _LIST_LABELS.get(list_id, list_id)
 
 
+_CONFIRM_WORDS = frozenset({"yes", "yeah", "yep", "confirm", "sure", "do it"})
+
+
 class TaskIntentHandler:
     """Handle task-related voice intents."""
 
     def __init__(self, db_factory: Callable[[], Session]) -> None:
         self._db_factory = db_factory
+        self._pending_complete: Optional[Task] = None
 
     async def handle(self, intent: Intent) -> str:
         """Route to add/query/complete based on intent name."""
@@ -126,10 +130,18 @@ class TaskIntentHandler:
         return f"You have {count} {noun} on your {label} list: {titles}."
 
     def _handle_complete_task(self, intent: Intent) -> str:
-        """Mark a task as completed by fuzzy title match."""
+        """Mark a task as completed by fuzzy title match with confirmation."""
         item = _get_slot(intent, "item")
         if not item:
             return "Which task would you like to mark as done?"
+
+        # Check if user is confirming a pending completion
+        if self._pending_complete is not None:
+            if item.strip().lower() in _CONFIRM_WORDS:
+                return self._execute_complete()
+
+            # Not a confirmation — treat as a new complete target
+            self._pending_complete = None
 
         search_term = item.lower()
 
@@ -145,14 +157,30 @@ class TaskIntentHandler:
 
             if match is None:
                 return f"I couldn't find an incomplete task matching '{item}'."
-
-            match.completed = True
-            db.commit()
-        except Exception:
-            LOGGER.exception("Failed to complete task '%s'", item)
-            db.rollback()
-            return f"Sorry, I couldn't mark {item} as done."
         finally:
             db.close()
 
-        return f"Done! I've marked {match.title} as complete."
+        # Stage the task for confirmation instead of completing immediately
+        self._pending_complete = match
+        return f"Mark '{match.title}' as complete? Say yes to confirm."
+
+    def _execute_complete(self) -> str:
+        """Commit the pending task completion and clear the pending state."""
+        task = self._pending_complete
+        assert task is not None
+        self._pending_complete = None
+
+        db: Session = self._db_factory()
+        try:
+            # Re-attach and update within a fresh session
+            merged = db.merge(task)
+            merged.completed = True
+            db.commit()
+        except Exception:
+            LOGGER.exception("Failed to complete task '%s'", task.title)
+            db.rollback()
+            return f"Sorry, I couldn't mark {task.title} as done."
+        finally:
+            db.close()
+
+        return f"Done! I've marked {task.title} as complete."

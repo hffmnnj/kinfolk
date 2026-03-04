@@ -135,6 +135,9 @@ def _format_event_list(events: list[CalendarEvent]) -> str:
     return " ".join(lines)
 
 
+_CONFIRM_WORDS = frozenset({"yes", "yeah", "yep", "confirm", "sure", "do it"})
+
+
 class CalendarIntentHandler:
     """Handle calendar-related voice intents."""
 
@@ -143,6 +146,7 @@ class CalendarIntentHandler:
         calendar_sync_service: CalendarSyncService,
     ) -> None:
         self._sync = calendar_sync_service
+        self._pending_delete: Optional[CalendarEvent] = None
 
     async def handle(self, intent: Intent) -> str:
         """Route to create/query/delete based on intent name."""
@@ -229,11 +233,20 @@ class CalendarIntentHandler:
         return _format_event_list(events)
 
     async def _handle_delete_event(self, intent: Intent) -> str:
-        """Find and remove an event by title match."""
+        """Find and remove an event by title match with confirmation."""
         event_text = _get_slot(intent, "event")
 
         if not event_text:
             return "Which event would you like to cancel?"
+
+        # Check if user is confirming a pending deletion
+        if self._pending_delete is not None:
+            if event_text.strip().lower() in _CONFIRM_WORDS:
+                return self._execute_delete()
+
+            # Not a confirmation — treat as a new delete target
+            # (fall through to normal search below)
+            self._pending_delete = None
 
         search_term = event_text.lower()
 
@@ -248,14 +261,20 @@ class CalendarIntentHandler:
                 break
 
         if match is None:
-            return (
-                "I couldn't find an event matching "
-                f"'{event_text}' on your calendar."
-            )
+            return f"I couldn't find an event matching '{event_text}' on your calendar."
 
-        # Remove from cached events
+        # Stage the event for confirmation instead of deleting immediately
+        self._pending_delete = match
+        return f"Are you sure you want to cancel '{match.title}'? Say yes to confirm."
+
+    def _execute_delete(self) -> str:
+        """Commit the pending deletion and clear the pending state."""
+        event = self._pending_delete
+        assert event is not None
+        self._pending_delete = None
+
         self._sync._cached_events = [
-            e for e in self._sync._cached_events if e is not match
+            e for e in self._sync._cached_events if e is not event
         ]
 
-        return f"I've cancelled {match.title}."
+        return f"I've cancelled {event.title}."
