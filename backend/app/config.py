@@ -22,10 +22,15 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./kinfolk.db"
 
     # CORS — allow Flutter app origins during development
+    # Override via CORS_ORIGINS env var in production (comma-separated list)
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
     ]
+    # Set to True to allow all origins (development only, never in production)
+    cors_allow_all: bool = False
 
     # Weather API (optional)
     openweather_api_key: str = ""

@@ -29,11 +29,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware — allow Flutter app origins
+# CORS middleware — use settings-driven origins (never wildcard with credentials)
+_cors_origins = ["*"] if settings.cors_allow_all else settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production via settings
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=not settings.cors_allow_all,  # credentials + wildcard is forbidden
     allow_methods=["*"],
     allow_headers=["*"],
 )
