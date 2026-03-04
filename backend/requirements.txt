@@ -10,3 +10,6 @@ httpx>=0.28.0
 pytest>=8.0.0
 pytest-asyncio>=0.24.0
 flake8>=7.0.0
+# NOTE: pysqlcipher3 is preferred but often needs system SQLCipher headers.
+# Using sqlcipher3 wheel as first practical fallback.
+sqlcipher3>=0.6.0

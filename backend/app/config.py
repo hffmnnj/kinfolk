@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "sqlite:///./kinfolk.db"
+    database_encryption_key: str = "change-me-in-env"
 
     # CORS — allow Flutter app origins during development
     # Override via CORS_ORIGINS env var in production (comma-separated list)
