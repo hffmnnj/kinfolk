@@ -16,7 +16,7 @@ from app.routers import auth, calendar, smarthome, tasks, users, voice
 from app.services.calendar_caldav import CalDAVCalendarService
 from app.services.calendar_google import GoogleCalendarService
 from app.services.calendar_sync import CalendarSyncService
-from app.services.intent_dispatch import IntentDispatch
+from app.services.intent_dispatch import IntentDispatch, setup_handlers
 from app.services.nlu import NLUService
 from app.services.stt import STTService
 from app.services.tts import TTSService
@@ -56,6 +56,12 @@ async def lifespan(app: FastAPI):
         caldav_service=caldav_service,
         db_factory=SessionLocal,
         settings=settings,
+    )
+
+    # Wire real intent handlers now that backing services exist
+    setup_handlers(
+        intent_dispatch_service,
+        calendar_sync=calendar_sync,
     )
 
     app.state.wake_word_service = wake_word_service

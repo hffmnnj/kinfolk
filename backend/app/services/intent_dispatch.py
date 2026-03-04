@@ -11,6 +11,31 @@ from app.services.nlu import _intent_category
 Handler = Callable[[Intent], str | Awaitable[str]]
 
 
+def setup_handlers(
+    dispatch: "IntentDispatch",
+    *,
+    calendar_sync=None,
+) -> None:
+    """Register real intent handlers, replacing built-in stubs.
+
+    Called from the application lifespan after all services are
+    constructed.  Each handler is only registered when its backing
+    service is available.
+    """
+    if calendar_sync is not None:
+        from app.services.intent_handlers.calendar_handler import (
+            CalendarIntentHandler,
+        )
+
+        calendar_handler = CalendarIntentHandler(
+            calendar_sync_service=calendar_sync,
+        )
+        dispatch.register_handler(
+            IntentCategory.CALENDAR,
+            calendar_handler.handle,
+        )
+
+
 class IntentDispatch:
     """Route parsed intents to category handlers."""
 
