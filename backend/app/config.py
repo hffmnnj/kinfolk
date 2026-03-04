@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     tts_speed: float = 1.0
     tts_volume: float = 0.8
 
+    # Natural Language Understanding (NLU)
+    nlu_confidence_threshold: float = 0.5
+    sentences_ini_path: str = "./backend/rhasspy/sentences.ini"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
